@@ -4,23 +4,50 @@
 #imports
 import argparse
 from pathlib import Path
+import re
 
-#functions
+## functions ##
+
+#renames the new file based on input and version num
 def versionName(file, owner):
     path = Path(file)
-    print("Stem:", path.stem)
-    print("Suffix:", path.suffix)
-    print(f"Base:{path.stem}_VFX_{owner}_v01{path.suffix}")
+    v_max = 0
+
+    #print("Stem:", path.stem)
+    #print("Suffix:", path.suffix)
+    #print(f"Base:{path.stem}_VFX_{owner}_v01{path.suffix}")
+
+    for f in path.parent.glob(f"{path.stem}_VFX_{owner}_v*{path.suffix}"):
+        #print("Found:", f.name)
+        v_curr = re.search(r"_v(\d{2})", f.name)
+        if v_curr:
+            v_curr = int(v_curr.group(1))
+            if v_curr > v_max:
+                v_max = v_curr
+    
+    v_next = v_max + 1
+    return path.parent / f"{path.stem}_VFX_{owner}_v{v_next:02d}{path.suffix}"
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("file", help = "enter file name or path")
-parser.add_argument("--owner", help = "define the owner")
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", help = "enter file name or path")
+    parser.add_argument("--owner", help = "define the owner")
+    parser.add_argument("--watermark", action = "store_true", help = "add watermark")
+    parser.add_argument("--gif", action = "store_true", help = "convert to gif")
+    parser.add_argument("--thumbnail", action = "store_true", help = "extract thumbnail")
+    parser.add_argument("--metadata", action = "store_true", help = "extract metadata")
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-print("File:", args.file)
-print("Owner:", args.owner)
+    print("File:", args.file)
+    print("Owner:", args.owner)
+    print("Watermark:", args.watermark)
+    print("Gif:", args.gif)
+    print("Thumbnail:", args.thumbnail)
+    print("Metadata:", args.metadata)
 
-versionName(args.file, args.owner)
+    new_name = versionName(args.file, args.owner)
+    print("New file name:", new_name)
 
+main()
