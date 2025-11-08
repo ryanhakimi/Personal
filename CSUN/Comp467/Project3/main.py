@@ -1,7 +1,7 @@
 ### project 3 vFxML ###
 # get it? cuz FML means fuck my life, and its kinda in the project name? whatever...
 
-#imports
+## imports ##
 import argparse
 from pathlib import Path
 import re
@@ -10,15 +10,16 @@ import subprocess
 ## functions ##
 
 #renames the new file based on input and version num
-def versionName(file, owner):
+def versionName(file, owner, out_suffix=None):
     path = Path(file)
+    ext = out_suffix if out_suffix is not None else path.suffix
     v_max = 0
 
     #print("Stem:", path.stem)
     #print("Suffix:", path.suffix)
     #print(f"Base:{path.stem}_VFX_{owner}_v01{path.suffix}")
 
-    for f in path.parent.glob(f"{path.stem}_VFX_{owner}_v*{path.suffix}"):
+    for f in path.parent.glob(f"{path.stem}_VFX_{owner}_v*{ext}"):
         #print("Found:", f.name)
         v_curr = re.search(r"_v(\d{2})", f.name)
         if v_curr:
@@ -27,11 +28,8 @@ def versionName(file, owner):
                 v_max = v_curr
     
     v_next = v_max + 1
-    return path.parent / f"{path.stem}_VFX_{owner}_v{v_next:02d}{path.suffix}"
+    return path.parent / f"{path.stem}_VFX_{owner}_v{v_next:02d}{ext}"
 
-
-import subprocess
-from pathlib import Path
 
 def watermark(file, owner):
     path = Path(file)
@@ -78,6 +76,33 @@ def thumbnail(file, owner):
     return output_path
 
 
+def makeGif(file, owner, fps = 24):
+    path = Path(file)
+    output_path = versionName(file, owner, ".gif")
+
+    print("Input Path:", path)
+    print("Output Gif:", output_path)
+
+    if path.suffix.lower() in (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"):
+        cmd = [
+        "ffmpeg", "-y",
+        "-loop", "1",
+        "-t", "1",
+        "-r", str(fps),
+        "-i", str(path),
+        str(output_path)
+        ]
+
+        subprocess.run(cmd, check=True)
+        print("GIF created:", output_path)
+        return output_path
+
+
+def metadata(file, owner):
+    path = Path(file)
+    
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("file", help = "enter file name or path")
@@ -104,5 +129,8 @@ def main():
     
     if args.thumbnail:
         thumbnail(args.file, args.owner)
+    
+    if args.gif:
+        makeGif(args.file, args.owner, fps = 24)
 
 main()
