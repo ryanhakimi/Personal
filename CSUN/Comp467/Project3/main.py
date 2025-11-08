@@ -85,12 +85,12 @@ def makeGif(file, owner, fps = 24):
 
     if path.suffix.lower() in (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"):
         cmd = [
-        "ffmpeg", "-y",
-        "-loop", "1",
-        "-t", "1",
-        "-r", str(fps),
-        "-i", str(path),
-        str(output_path)
+            "ffmpeg", "-y",
+            "-loop", "1",
+            "-t", "1",
+            "-r", str(fps),
+            "-i", str(path),
+            str(output_path)
         ]
 
         subprocess.run(cmd, check=True)
@@ -100,7 +100,25 @@ def makeGif(file, owner, fps = 24):
 
 def metadata(file, owner):
     path = Path(file)
-    
+    print(f"Metadata for {path}:")
+
+    cmd = [
+        "ffprobe",
+        "-v", "quiet",
+        "-print_format", "json",
+        "-show_format",
+        "-show_streams",
+        str(path)
+    ]
+
+    result = subprocess.run(cmd, capture_output = True, text = True)
+
+    output_txt = path.parent / f"{path.stem}_VFX_{owner}_metadata.txt"
+    with open(output_txt, "w", encoding="utf-8") as f:
+        f.write(result.stdout)
+
+    print("Metadata exported to:", output_txt)
+    return output_txt
 
 
 def main():
@@ -132,5 +150,8 @@ def main():
     
     if args.gif:
         makeGif(args.file, args.owner, fps = 24)
+
+    if args.metadata:
+        metadata(args.file, args.owner)
 
 main()
