@@ -52,7 +52,6 @@ def watermark(file, owner):
         cmd.extend(["-frames:v", "1", "-update", "1"])
 
     cmd.append(str(output_path))
-
     subprocess.run(cmd, check=True)
     print("Watermarked file created:", output_path)
 
@@ -60,8 +59,24 @@ def watermark(file, owner):
 
 
 def thumbnail(file, owner):
+    path = Path(file)
     output_path = versionName(file, owner)
-    
+    print("Input Path:", path)
+    print("Output Path:", output_path)
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(path),
+        "-vf", "scale=320:180",
+    ]
+
+    if path.suffix.lower() in (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"):
+        cmd.extend(["-frames:v", "1", "-update", "1"])
+
+    cmd.append(str(output_path))
+    subprocess.run(cmd, check=True)
+    return output_path
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -86,5 +101,8 @@ def main():
 
     if args.watermark:
         watermark(args.file, args.owner)
+    
+    if args.thumbnail:
+        thumbnail(args.file, args.owner)
 
 main()
