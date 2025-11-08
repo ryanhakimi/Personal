@@ -1,0 +1,8 @@
+python3 main.py images/Law.JPG --owner KevinChaja --watermark
+
+python3 main.py images/Bath.JPG --owner KevinChaja --watermark --thumbnail
+
+python3 main.py images --owner KevinChaja --watermark --gif
+
+for f in images/*.gif; do python3 main.py "$f" --owner KevinChaja --metadata; done
+cat images/*_VFX_KevinChaja_metadata.txt > 4_metadata.txt
