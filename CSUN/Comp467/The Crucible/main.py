@@ -193,6 +193,51 @@ def save_xytech_to_db(db, xytech_entries, source_name):
     if docs:
         coll.insert_many(docs)
 
+
+def process_video(video_path: str):
+    
+    print(f"yo, gonna process video: {video_path}")
+
+    db = get_db()
+
+    ps_entries = get_planeshifter_entries(db)
+    print(f"found {len(ps_entries)} planeshifter entries")
+
+    all_frames = []
+    for e in ps_entries:
+        all_frames.extend(e["frames"])
+
+    ps_ranges = add_handles_to_frames(all_frames)
+
+    print("ranges w/ handles:")
+    for r in ps_ranges:
+        print(r)
+
+
+def get_planeshifter_entries(db):
+    coll = db["baselight"]
+    # searching by substring in norm_path
+    return list(coll.find({"norm_path": {"$regex": "Planeshifter"}}))
+
+
+def add_handles_to_frames(frames, fps=24, seconds=2):
+    if not frames:
+        return []
+
+    frames = sorted(frames)
+
+    handle = fps * seconds
+    ranges = []
+
+    for f in frames:
+        start = f - handle
+        end = f + handle
+        if start < 0:
+            start = 0
+        ranges.append((start, end))
+
+    return ranges
+
 ## func def end ##
 
 
@@ -212,6 +257,11 @@ parser.add_argument(
     help="path to xytech workorder text file"
 )
 
+parser.add_argument(
+    "--process",
+    help="video file to process (trailer demo)"
+)
+
 args = parser.parse_args()
 
 baselight_entries = parse_baselight_file(args.baselight)
@@ -226,3 +276,6 @@ write_matches_to_csv(matches, output_csv)
 db = get_db()
 save_baselight_to_db(db, baselight_entries, args.baselight)
 save_xytech_to_db(db, xytech_entries, args.xytech)
+
+if args.process:
+    process_video(args.process)
