@@ -1,6 +1,7 @@
 import csv
 import argparse
 from typing import List, Dict, Tuple
+from pymongo import MongoClient
 
 ## function definitions ##
 
@@ -155,6 +156,43 @@ def write_matches_to_csv(matches: List[Dict], output_csv_path: str) -> None:
             for fr in m["frame_ranges"]:
                 writer.writerow([m["xytech_path"], fr])
 
+
+# mongo helpers
+def get_db():
+    client = MongoClient("mongodb://localhost:27017/")
+    return client["proj4_db"]
+
+
+def save_baselight_to_db(db, baselight_entries, source_name):
+    coll = db["baselight"]
+
+    docs = []
+    for e in baselight_entries:
+        docs.append({
+            "source": source_name,
+            "raw_path": e["raw_path"],
+            "norm_path": e["norm_path"],
+            "frames": e["frames"],
+        })
+
+    if docs:
+        coll.insert_many(docs)
+
+
+def save_xytech_to_db(db, xytech_entries, source_name):
+    coll = db["xytech"]
+
+    docs = []
+    for x in xytech_entries:
+        docs.append({
+            "source": source_name,
+            "raw_path": x["raw_path"],
+            "norm_path": x["norm_path"],
+        })
+
+    if docs:
+        coll.insert_many(docs)
+
 ## func def end ##
 
 
@@ -184,3 +222,7 @@ matches = build_match_table(baselight_entries, xytech_entries)
 output_csv = "match_output.csv"
 write_matches_to_csv(matches, output_csv)
 
+# stash in mongo
+db = get_db()
+save_baselight_to_db(db, baselight_entries, args.baselight)
+save_xytech_to_db(db, xytech_entries, args.xytech)
