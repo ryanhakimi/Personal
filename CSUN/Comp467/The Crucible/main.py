@@ -5,6 +5,7 @@ from pymongo import MongoClient
 import subprocess
 import json
 from openpyxl import Workbook
+from openpyxl.drawing.image import Image as XLImage
 
 ## function definitions ##
 
@@ -231,14 +232,19 @@ def process_video(video_path: str):
 
     # convert frame ranges to tc ranges
     tc_ranges = []
-    for start_f, end_f in ps_ranges:
+    for idx, (start_f, end_f) in enumerate(ps_ranges, start=1):
         start_tc_str = frames_to_timecode(start_f, fps, base_frame)
         end_tc_str = frames_to_timecode(end_f, fps, base_frame)
+
+        mid_f = (start_f + end_f) // 2
+        thumb_path = make_thumbnail(video_path, mid_f, fps, idx)
+
         tc_ranges.append({
             "start_frame": start_f,
             "end_frame": end_f,
             "start_tc": start_tc_str,
             "end_tc": end_tc_str,
+            "thumb_path": thumb_path,
         })
 
     print("ranges as timecode:")
@@ -325,6 +331,33 @@ def get_video_info(video_path: str):
     return fps, timecode_str
 
 
+def make_thumbnail(video_path, frame, fps, idx):
+    # pick a time in seconds for ffmpeg
+    seconds = frame / fps if fps > 0 else frame / 24.0
+
+    thumb_name = f"thumb_{idx:02d}.png"
+
+    cmd = [
+        "ffmpeg",
+        "-y",                # overwrite
+        "-ss", str(seconds),
+        "-i", video_path,
+        "-vframes", "1",
+        "-s", "96x74",
+        thumb_name,
+    ]
+
+    # keep output quiet
+    subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    return thumb_name
+
+
 def timecode_to_frames(tc: str, fps: float) -> int:
     
     parts = tc.split(":")
@@ -371,14 +404,37 @@ def write_xls_with_planeshifter(output_xls_path, matches, tc_ranges):
     # add planeshifter tc stuff as extra section
     if tc_ranges:
         ws.append([])  # blank row
-        ws.append(["ps_start_frame", "ps_end_frame", "ps_start_tc", "ps_end_tc"])
+        ws.append(["ps_start_frame", "ps_end_frame", "ps_start_tc", "ps_end_tc", "ps_thumb"])
+
         for r in tc_ranges:
             ws.append([
                 r["start_frame"],
                 r["end_frame"],
                 r["start_tc"],
                 r["end_tc"],
+                "",  # placeholder for thumb
             ])
+
+        # drop thumbnails into the last column
+        start_row = ws.max_row - len(tc_ranges) + 1
+        thumb_col = 5  # column E
+
+        for i, r in enumerate(tc_ranges):
+            thumb_path = r.get("thumb_path")
+            if not thumb_path:
+                continue
+
+            row = start_row + i
+            cell_ref = ws.cell(row=row, column=thumb_col).coordinate
+
+            try:
+                img = XLImage(thumb_path)
+                # sizes are already 96x74, but confirm
+                img.width = 96
+                img.height = 74
+                ws.add_image(img, cell_ref)
+            except Exception as e:
+                print(f"couldnt add img {thumb_path}: {e}")
 
     wb.save(output_xls_path)
     print(f"wrote xls to {output_xls_path}")
